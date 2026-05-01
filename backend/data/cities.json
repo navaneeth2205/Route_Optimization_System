@@ -71,6 +71,12 @@
       "name": "Bhopal",
       "lat": 23.2599,
       "lng": 77.4126
+    },
+    {
+      "id": "ca239596",
+      "name": "Kurnool",
+      "lat": null,
+      "lng": null
     }
   ],
   "roads": [
@@ -235,6 +241,42 @@
       "isDirected": false,
       "trafficMultiplier": 1.0,
       "effectiveWeight": 839.7
+    },
+    {
+      "id": "0a29de2e",
+      "source": "ca239596",
+      "destination": "hyderabad",
+      "weight": 217.0,
+      "isDirected": false,
+      "trafficMultiplier": 1.0,
+      "effectiveWeight": 217.0
+    },
+    {
+      "id": "8aba3946",
+      "source": "ca239596",
+      "destination": "bangalore",
+      "weight": 361.0,
+      "isDirected": false,
+      "trafficMultiplier": 1.0,
+      "effectiveWeight": 361.0
+    },
+    {
+      "id": "aa9cefc1",
+      "source": "ca239596",
+      "destination": "pune",
+      "weight": 731.0,
+      "isDirected": false,
+      "trafficMultiplier": 1.0,
+      "effectiveWeight": 731.0
+    },
+    {
+      "id": "ff39a2ea",
+      "source": "ca239596",
+      "destination": "chennai",
+      "weight": 479.0,
+      "isDirected": false,
+      "trafficMultiplier": 1.0,
+      "effectiveWeight": 479.0
     }
   ]
 }

@@ -370,3 +370,40 @@ window.mapFindRoute = mapFindRoute;
 window.mapClearRoute = mapClearRoute;
 window.checkRealDistance = checkRealDistance;
 window.syncAllDistances = syncAllDistances;
+
+// Refresh map data (re-fetch graph, rebuild markers and layers)
+async function refreshMapData() {
+  try {
+    const graphData = await API.getGraph();
+    window._mapGraphData = graphData;
+
+    // Repopulate selects if present
+    const selects = ['map-from', 'map-to', 'real-dist-from', 'real-dist-to'];
+    selects.forEach(selId => {
+      const sel = document.getElementById(selId);
+      if (sel) {
+        sel.innerHTML = '';
+        graphData.cities.forEach(c => {
+          sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+        });
+      }
+    });
+
+    // Update stats
+    const cityCountEl = document.getElementById('map-city-count');
+    const roadCountEl = document.getElementById('map-road-count');
+    if (cityCountEl) cityCountEl.textContent = graphData.cities.length;
+    if (roadCountEl) roadCountEl.textContent = graphData.roads.length;
+
+    // Recreate map markers and roads by reinitialising the map
+    if (mapInstance) {
+      try { mapInstance.remove(); } catch (e) { /* ignore */ }
+      mapInstance = null;
+    }
+    initLeafletMap(graphData);
+    showToast('Map updated with latest cities.', 'success');
+  } catch (e) {
+    showToast('Failed to refresh map: ' + e.message, 'error');
+  }
+}
+window.refreshMapData = refreshMapData;

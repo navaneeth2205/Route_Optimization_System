@@ -31,6 +31,14 @@ async function switchManageTab(tab, el) {
             <label class="form-label">City Name</label>
             <input class="form-input" id="new-city-name" placeholder="e.g. Chandigarh">
           </div>
+          <div class="form-group">
+            <label class="form-label">Latitude (optional)</label>
+            <input class="form-input" id="new-city-lat" placeholder="e.g. 30.7333">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Longitude (optional)</label>
+            <input class="form-input" id="new-city-lng" placeholder="e.g. 76.7794">
+          </div>
           <button class="btn btn-accent" onclick="addNewCity()">+ Add City</button>
         </div>
         <div class="card">
@@ -143,10 +151,18 @@ async function addNewCity() {
   const name = document.getElementById('new-city-name').value.trim();
   if (!name) { showToast('Enter a city name', 'error'); return; }
   try {
-    await API.addCity({ name });
+    const latVal = document.getElementById('new-city-lat').value.trim();
+    const lngVal = document.getElementById('new-city-lng').value.trim();
+    const body = { name };
+    if (latVal !== '') body.lat = parseFloat(latVal);
+    if (lngVal !== '') body.lng = parseFloat(lngVal);
+    await API.addCity(body);
     showToast(`City "${name}" added!`, 'success');
     document.getElementById('new-city-name').value = '';
+    document.getElementById('new-city-lat').value = '';
+    document.getElementById('new-city-lng').value = '';
     await loadCitiesList();
+    if (window.refreshMapData) await window.refreshMapData();
   } catch (e) { showToast(e.message, 'error'); }
 }
 
@@ -156,6 +172,7 @@ async function deleteCity(id) {
     await API.deleteCity(id);
     showToast('City deleted', 'success');
     await loadCitiesList();
+    if (window.refreshMapData) await window.refreshMapData();
   } catch (e) { showToast(e.message, 'error'); }
 }
 
