@@ -162,8 +162,7 @@ async function addNewCity() {
     document.getElementById('new-city-lat').value = '';
     document.getElementById('new-city-lng').value = '';
     await loadCitiesList();
-    if (window.refreshMapData) await window.refreshMapData();
-  } catch (e) { showToast(e.message, 'error'); }
+    if (window.refreshMapData) await window.refreshMapData();    else if (window.signalMapDataChanged) window.signalMapDataChanged();  } catch (e) { showToast(e.message, 'error'); }
 }
 
 async function deleteCity(id) {

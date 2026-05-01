@@ -95,14 +95,19 @@ async function renderMapPage(container) {
   `;
 
   try {
+    // Always fetch fresh data from the API (don't use cached window._mapGraphData)
     const graphData = await API.getGraph();
     window._mapGraphData = graphData;
+    
+    // Clear data-changed flag
+    localStorage.removeItem('mapDataChanged');
 
     // Populate dropdowns
     const selects = ['map-from', 'map-to', 'real-dist-from', 'real-dist-to'];
     selects.forEach(selId => {
       const sel = document.getElementById(selId);
       if (sel) {
+        sel.innerHTML = ''; // Clear first
         graphData.cities.forEach(c => {
           sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
         });
@@ -371,13 +376,19 @@ window.mapClearRoute = mapClearRoute;
 window.checkRealDistance = checkRealDistance;
 window.syncAllDistances = syncAllDistances;
 
-// Refresh map data (re-fetch graph, rebuild markers and layers)
+// Signal that data has changed (will be picked up next time map page renders)
+function signalMapDataChanged() {
+  localStorage.setItem('mapDataChanged', 'true');
+}
+window.signalMapDataChanged = signalMapDataChanged;
+
+// Refresh map data (re-fetch graph and rebuild markers)
 async function refreshMapData() {
   try {
     const graphData = await API.getGraph();
     window._mapGraphData = graphData;
 
-    // Repopulate selects if present
+    // Repopulate selects
     const selects = ['map-from', 'map-to', 'real-dist-from', 'real-dist-to'];
     selects.forEach(selId => {
       const sel = document.getElementById(selId);
@@ -395,15 +406,93 @@ async function refreshMapData() {
     if (cityCountEl) cityCountEl.textContent = graphData.cities.length;
     if (roadCountEl) roadCountEl.textContent = graphData.roads.length;
 
-    // Recreate map markers and roads by reinitialising the map
+    // Rebuild map markers and roads
+    mapMarkers = {};
+    mapRoadLines = [];
     if (mapInstance) {
-      try { mapInstance.remove(); } catch (e) { /* ignore */ }
-      mapInstance = null;
+      // Clear existing layers
+      mapInstance.eachLayer((layer) => {
+        if (layer instanceof L.Marker || layer instanceof L.Polyline) {
+          mapInstance.removeLayer(layer);
+        }
+      });
     }
-    initLeafletMap(graphData);
+    
+    // Re-add city markers and roads
+    addMapMarkersAndRoads(graphData);
+    
     showToast('Map updated with latest cities.', 'success');
   } catch (e) {
     showToast('Failed to refresh map: ' + e.message, 'error');
   }
 }
+
+// Helper to add markers and roads to existing map
+function addMapMarkersAndRoads(graphData) {
+  if (!mapInstance) return;
+  
+  const cityIcon = L.divIcon({
+    className: 'map-city-marker',
+    html: '<div style="width:14px;height:14px;background:#2563EB;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(37,99,235,0.5);"></div>',
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  // Add city markers
+  const bounds = [];
+  graphData.cities.forEach(c => {
+    if (c.lat && c.lng) {
+      const marker = L.marker([c.lat, c.lng], { icon: cityIcon })
+        .addTo(mapInstance)
+        .bindPopup(`<strong>${c.name}</strong><br>ID: ${c.id}<br>Lat: ${c.lat}, Lng: ${c.lng}`);
+      
+      L.marker([c.lat, c.lng], {
+        icon: L.divIcon({
+          className: 'map-city-label',
+          html: `<div style="font-size:11px;font-weight:700;color:#1E293B;text-shadow:1px 1px 2px #fff,-1px -1px 2px #fff,1px -1px 2px #fff,-1px 1px 2px #fff;white-space:nowrap;transform:translateY(-20px);text-align:center;">${c.name}</div>`,
+          iconSize: [80, 20],
+          iconAnchor: [40, 30],
+        })
+      }).addTo(mapInstance);
+
+      mapMarkers[c.id] = marker;
+      bounds.push([c.lat, c.lng]);
+    }
+  });
+
+  // Draw road lines
+  const cityMap = {};
+  graphData.cities.forEach(c => cityMap[c.id] = c);
+
+  graphData.roads.forEach(r => {
+    const src = cityMap[r.source];
+    const dst = cityMap[r.destination];
+    if (src && dst && src.lat && dst.lat) {
+      const line = L.polyline([[src.lat, src.lng], [dst.lat, dst.lng]], {
+        color: '#94A3B8',
+        weight: 2,
+        opacity: 0.5,
+        dashArray: '6, 8',
+      }).addTo(mapInstance);
+      
+      const midLat = (src.lat + dst.lat) / 2;
+      const midLng = (src.lng + dst.lng) / 2;
+      L.marker([midLat, midLng], {
+        icon: L.divIcon({
+          className: 'map-road-label',
+          html: `<div style="font-size:9px;color:#64748B;background:rgba(255,255,255,0.85);padding:1px 5px;border-radius:8px;white-space:nowrap;font-weight:600;">${r.weight} km</div>`,
+          iconSize: [60, 16],
+          iconAnchor: [30, 8],
+        })
+      }).addTo(mapInstance);
+
+      mapRoadLines.push(line);
+    }
+  });
+
+  if (bounds.length > 0) {
+    mapInstance.fitBounds(bounds, { padding: [30, 30] });
+  }
+}
+
 window.refreshMapData = refreshMapData;
